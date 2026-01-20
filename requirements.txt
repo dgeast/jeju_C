@@ -8,3 +8,5 @@ openpyxl
 xlrd
 python-dotenv
 xlsxwriter
+statsmodels
+patsy
