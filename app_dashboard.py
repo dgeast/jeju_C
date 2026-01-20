@@ -93,24 +93,32 @@ st.markdown("""
 # ------------------------------------------------------------------
 # 데이터 로딩 (캐싱)
 # ------------------------------------------------------------------
+try:
+    last_mod = Path("data/analysis_product_efficiency.csv").stat().st_mtime
+except:
+    last_mod = datetime.now().timestamp()
+
 @st.cache_data(ttl=3600, show_spinner="데이터를 분석 중입니다...")
 def load_all_data(mod_time):
     data_dir = Path("data")
     
-    # 전처리 및 기본 데이터
+    # 필수 파일 확인
+    required = ["data_preprocessed.csv", "data_clustered.csv", "data_eventstats.csv", "data_pagestats.csv", 
+                "data_sales_click.csv", "analysis_cluster_channel.csv", "analysis_product_efficiency.csv"]
+    
+    missing = [f for f in required if not (data_dir / f).exists()]
+    if missing:
+        st.error(f"🚨 필수 데이터 파일이 누락되었습니다: {', '.join(missing)}")
+        st.stop()
+            
     df_preprocessed = pd.read_csv(data_dir / "data_preprocessed.csv", encoding="utf-8-sig")
     df_clustered = pd.read_csv(data_dir / "data_clustered.csv", encoding="utf-8-sig")
-    
-    # 마케팅 및 분석 데이터
     df_event = pd.read_csv(data_dir / "data_eventstats.csv", encoding="utf-8-sig")
     df_page = pd.read_csv(data_dir / "data_pagestats.csv", encoding="utf-8-sig")
     df_click = pd.read_csv(data_dir / "data_sales_click.csv", encoding="utf-8-sig")
-    
-    # 심화 분석 데이터
     df_cluster_channel = pd.read_csv(data_dir / "analysis_cluster_channel.csv", encoding="utf-8-sig", index_col=0)
     df_prod_eff = pd.read_csv(data_dir / "analysis_product_efficiency.csv", encoding="utf-8-sig")
     
-    # Phase 5 데이터 (LTV 등)
     try:
         df_ltv = pd.read_csv(data_dir / "analysis_ltv.csv", encoding="utf-8-sig")
         df_interval = pd.read_csv(data_dir / "analysis_order_interval.csv", encoding="utf-8-sig")
@@ -118,21 +126,17 @@ def load_all_data(mod_time):
     except:
         df_ltv, df_interval, df_attr = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     
-    # 날짜 컬럼 변환
-    date_cols = ["주문일", "일자", "날짜"]
+    # 날짜 처리
     for df_item in [df_preprocessed, df_clustered, df_event, df_click]:
-        for col in date_cols:
+        for col in ["주문일", "일자", "날짜"]:
             if col in df_item.columns:
                 df_item[col] = pd.to_datetime(df_item[col], errors="coerce")
     
-    # inf 값 및 NaN 처리 (수익성 지표)
+    # 수치 안정화
     if not df_prod_eff.empty:
         df_prod_eff.replace([np.inf, -np.inf], 0, inplace=True)
         df_prod_eff.fillna(0, inplace=True)
-    
-    # 강제 디버깅: '공급가' 누락 시 더미 데이터 생성
-    if '공급가' not in df_prod_eff.columns:
-        df_prod_eff['공급가'] = 0
+    if '공급가' not in df_prod_eff.columns: df_prod_eff['공급가'] = 0
 
     return df_preprocessed, df_clustered, df_event, df_page, df_click, df_cluster_channel, df_prod_eff, df_ltv, df_interval, df_attr
 
