@@ -93,9 +93,8 @@ st.markdown("""
 # ------------------------------------------------------------------
 # 데이터 로딩 (캐싱)
 # ------------------------------------------------------------------
-@st.cache_data
-def load_data(refresh_time):
-    """전처리된 데이터 및 클러스터링 데이터 로드"""
+@st.cache_data(ttl=3600, show_spinner="데이터를 분석 중입니다...")
+def load_all_data(mod_time):
     data_dir = Path("data")
     
     # 전처리 및 기본 데이터
@@ -111,7 +110,7 @@ def load_data(refresh_time):
     df_cluster_channel = pd.read_csv(data_dir / "analysis_cluster_channel.csv", encoding="utf-8-sig", index_col=0)
     df_prod_eff = pd.read_csv(data_dir / "analysis_product_efficiency.csv", encoding="utf-8-sig")
     
-    # Phase 5 데이터
+    # Phase 5 데이터 (LTV 등)
     try:
         df_ltv = pd.read_csv(data_dir / "analysis_ltv.csv", encoding="utf-8-sig")
         df_interval = pd.read_csv(data_dir / "analysis_order_interval.csv", encoding="utf-8-sig")
@@ -126,25 +125,18 @@ def load_data(refresh_time):
             if col in df_item.columns:
                 df_item[col] = pd.to_datetime(df_item[col], errors="coerce")
     
+    # inf 값 및 NaN 처리 (수익성 지표)
+    if not df_prod_eff.empty:
+        df_prod_eff.replace([np.inf, -np.inf], 0, inplace=True)
+        df_prod_eff.fillna(0, inplace=True)
+    
+    # 강제 디버깅: '공급가' 누락 시 더미 데이터 생성
+    if '공급가' not in df_prod_eff.columns:
+        df_prod_eff['공급가'] = 0
+
     return df_preprocessed, df_clustered, df_event, df_page, df_click, df_cluster_channel, df_prod_eff, df_ltv, df_interval, df_attr
 
-# 데이터 로드 (파일 수정 시간 기반 캐시 갱신)
-last_mod = Path("data/analysis_product_efficiency.csv").stat().st_mtime
-@st.cache_data(ttl=3600, show_spinner="데이터를 분석 중입니다...")
-def load_all_data(mod_time):
-    df_preprocessed = pd.read_csv("data/data_preprocessed.csv")
-    df_prod_eff = pd.read_csv("data/analysis_product_efficiency.csv")
-    df_event = pd.read_csv("data/data_eventstats.csv")
-    df_click = pd.read_csv("data/data_sales_click.csv")
-    df_attr = pd.read_csv("data/analysis_attribution.csv")
-    return df_preprocessed, df_prod_eff, df_event, df_click, df_attr
-
-df_preprocessed, df_prod_eff, df_event, df_click, df_attr = load_all_data(last_mod)
-
-# 강제 디버깅: '공급가' 누락 시 더미 데이터 생성 시도
-if '공급가' not in df_prod_eff.columns:
-    if not df_prod_eff.empty:
-        df_prod_eff['공급가'] = 0 # Fallback
+df_preprocessed, df_clustered, df_event, df_page, df_click, df_cluster_channel, df_prod_eff, df_ltv, df_interval, df_attr = load_all_data(last_mod)
 
 # ------------------------------------------------------------------
 # 사이드바 메뉴
