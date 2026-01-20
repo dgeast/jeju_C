@@ -7,3 +7,4 @@ scikit-learn
 openpyxl
 xlrd
 python-dotenv
+xlsxwriter
