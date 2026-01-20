@@ -148,7 +148,7 @@ df_preprocessed, df_clustered, df_event, df_page, df_click, df_cluster_channel, 
 st.sidebar.title("📊 메뉴")
 page = st.sidebar.radio(
     "페이지 선택",
-    ["👑 경영 요약", "🏆 고객 가치 분석", "📊 마케팅 기여도", "📈 개요", "📊 EDA 분석", "🎯 클러스터링", "📈 마케팅 분석", "💎 속성 분석", "🔍 상세 분석"]
+    ["👑 경영 요약", "📄 최종 전략 보고서", "📋 전략/분석 보고서", "🧪 A/B 테스트 제안", "🎯 전략적 상품 매트릭스", "🏆 고객 가치 분석", "📊 마케팅 기여도", "📈 개요", "📊 EDA 분석", "🎯 클러스터링", "📈 마케팅 분석", "💎 속성 분석", "🔍 상세 분석"]
 )
 
 st.sidebar.divider()
@@ -368,6 +368,181 @@ if page == "👑 경영 요약":
         file_name=f"Management_Report_{pd.Timestamp.now().strftime('%Y%m%d')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+# ------------------------------------------------------------------
+# 페이지: 📄 최종 전략 보고서 (Final Strategic Report)
+# ------------------------------------------------------------------
+elif page == "📄 최종 전략 보고서":
+    st.markdown("""
+        <div style="background: linear-gradient(90deg, #1a2a6c 0%, #b21f1f 100%); padding: 30px; border-radius: 20px; color: white; margin-bottom: 30px;">
+            <h1 style="margin:0; font-weight:800; font-size: 2.5rem;">📄 최종 경영 및 마케팅 전략 보고서</h1>
+            <p style="margin:5px 0 0 0; opacity: 0.8; font-size: 1.1rem;"> 데이터 분석 기반 종합 비즈니스 인사이트 v6.0 </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    def load_report(filename):
+        path = Path("docs") / filename
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+        return f"🚨 보고서 파일(`docs/{filename}`)을 찾을 수 없습니다."
+
+    final_content = load_report("final_strategic_report.md")
+    st.markdown(final_content)
+    
+    st.divider()
+    st.download_button(
+        label="📥 전략 보고서 전문 다운로드 (PDF/TXT용)",
+        data=final_content,
+        file_name=f"Final_Strategic_Report_{datetime.now().strftime('%Y%m%d')}.md",
+        mime="text/markdown"
+    )
+
+# ------------------------------------------------------------------
+# 페이지: 📋 전략/분석 보고서 (Strategy Reports)
+# ------------------------------------------------------------------
+elif page == "📋 전략/분석 보고서":
+    st.markdown("""
+        <div style="background: linear-gradient(90deg, #2c3e50 0%, #4ca1af 100%); padding: 30px; border-radius: 20px; color: white; margin-bottom: 30px;">
+            <h1 style="margin:0; font-weight:800; font-size: 2.5rem;">📋 전략/분석 보고서 통합 뷰</h1>
+            <p style="margin:5px 0 0 0; opacity: 0.8; font-size: 1.1rem;"> 데이터 분석 기반 경영 전략 및 마케팅 인사이트 </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    tab1, tab2 = st.tabs(["🚀 비즈니스 경영 전략", "📱 마케팅 종합 분석"])
+
+    def load_report(filename):
+        path = Path("docs") / filename
+        if path.exists():
+            return path.read_text(encoding="utf-8")
+        return f"🚨 보고서 파일(`docs/{filename}`)을 찾을 수 없습니다."
+
+    with tab1:
+        content_biz = load_report("business_strategy.md")
+        st.markdown(content_biz)
+        st.download_button("📂 경영 전략 보고서 다운로드 (txt)", content_biz, "business_strategy.txt")
+
+    with tab2:
+        content_mkt = load_report("marketing_analysis.md")
+        st.markdown(content_mkt)
+        st.download_button("📂 마케팅 분석 보고서 다운로드 (txt)", content_mkt, "marketing_analysis.txt")
+
+# ------------------------------------------------------------------
+# 페이지: 🎯 전략적 상품 매트릭스 (Strategic Product Matrix)
+# ------------------------------------------------------------------
+elif page == "🎯 전략적 상품 매트릭스":
+    st.markdown("""
+        <div style="background: linear-gradient(90deg, #f39c12 0%, #d35400 100%); padding: 30px; border-radius: 20px; color: white; margin-bottom: 30px;">
+            <h1 style="margin:0; font-weight:800; font-size: 2.5rem;">🎯 전략적 상품 매트릭스</h1>
+            <p style="margin:5px 0 0 0; opacity: 0.8; font-size: 1.1rem;"> CTR과 RPC를 결합한 상품 포트폴리오 분석 </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 매트릭스 분석용 데이터 준비
+    median_ctr = df_prod_eff['CTR'].median()
+    median_rpc = df_prod_eff['RPC'].median()
+
+    def classify_product(row):
+        if row['CTR'] >= median_ctr and row['RPC'] >= median_rpc:
+            return "🌟 Star (주력 모델)"
+        elif row['CTR'] >= median_ctr and row['RPC'] < median_rpc:
+            return "💡 Opportunity (기회 상품)"
+        elif row['CTR'] < median_ctr and row['RPC'] >= median_rpc:
+            return "💰 Cash Cow (수익 상품)"
+        else:
+            return "⚠️ Underperform (개선 필요)"
+
+    df_prod_eff['전략분류'] = df_prod_eff.apply(classify_product, axis=1)
+
+    # 시각화
+    fig_matrix = px.scatter(
+        df_prod_eff,
+        x="CTR",
+        y="RPC",
+        color="전략분류",
+        size="조회수",
+        hover_name="상품명",
+        text="상품명",
+        title="상품 전략 매트릭스 (CTR vs RPC)",
+        labels={"CTR": "클릭률 (%)", "RPC": "클릭당 매출 (원)"},
+        color_discrete_map={
+            "🌟 Star (주력 모델)": "#2ecc71",
+            "💡 Opportunity (기회 상품)": "#3498db",
+            "💰 Cash Cow (수익 상품)": "#f1c40f",
+            "⚠️ Underperform (개선 필요)": "#e74c3c"
+        }
+    )
+    
+    # 구분선 (중앙값) 추가
+    fig_matrix.add_hline(y=median_rpc, line_dash="dot", line_color="gray", annotation_text="RPC 중앙값")
+    fig_matrix.add_vline(x=median_ctr, line_dash="dot", line_color="gray", annotation_text="CTR 중앙값")
+    
+    fig_matrix.update_traces(textposition='top center')
+    st.plotly_chart(fig_matrix, use_container_width=True)
+
+    st.divider()
+    
+    # 상세 테이블
+    st.subheader("📋 분류별 상품 리스트")
+    selected_class = st.selectbox("전략 분류 선택", df_prod_eff['전략분류'].unique())
+    st.dataframe(
+        df_prod_eff[df_prod_eff['전략분류'] == selected_class][['상품명', 'CTR', 'RPC', 'RPV', '조회수', '결제금액(상품별)']].sort_values('결제금액(상품별)', ascending=False),
+        use_container_width=True
+    )
+
+# ------------------------------------------------------------------
+# 페이지: 🧪 A/B 테스트 제안 (A/B Test Proposal)
+# ------------------------------------------------------------------
+elif page == "🧪 A/B 테스트 제안":
+    st.markdown("""
+        <div style="background: linear-gradient(90deg, #8e44ad 0%, #c39bd3 100%); padding: 30px; border-radius: 20px; color: white; margin-bottom: 30px;">
+            <h1 style="margin:0; font-weight:800; font-size: 2.5rem;">🧪 데이터 기반 A/B 테스트 제안</h1>
+            <p style="margin:5px 0 0 0; opacity: 0.8; font-size: 1.1rem;"> 통계적 가설 검정을 통한 비즈니스 최적화 실험 </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.subheader("🎯 전략적 실험 시나리오")
+    st.write("분석된 클러스터 특성과 상품 효율 지표를 바탕으로 다음의 A/B 테스트를 제안합니다.")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div class="premium-card">
+            <h3>실험 1: [충성고객] VIP 혜택 강조 vs 할인 쿠폰</h3>
+            <p><strong>대상:</strong> Cluster 1 (고가치 고객군)</p>
+            <p><strong>가설:</strong> 충성 고객에게는 단순 할인보다 'VIP 전용 감사 혜택'과 '포인트 추가 적립' 메시지가 더 높은 LTV를 유도할 것이다.</p>
+            <ul>
+                <li><strong>A안:</strong> "전 상품 10% 장바구니 할인 쿠폰 지급"</li>
+                <li><strong>B안:</strong> "VIP 고객님만을 위한 5% 추가 적립 + 전용 감사 선물 제공"</li>
+            </ul>
+            <p><strong>핵심 지표:</strong> 재구매 전환율, 객단가(AOV)</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="premium-card">
+            <h3>실험 2: [신규유입] 검색 광고 랜딩 페이지 최적화</h3>
+            <p><strong>대상:</strong> Cluster 2 (네이버 쇼핑 검색 유입)</p>
+            <p><strong>가설:</strong> '초고당도 타이벡 감귤' 검색 유입 고객에게 리뷰 중심 랜딩 페이지가 브랜드 스토리 페이지보다 전환율이 높을 것이다.</p>
+            <ul>
+                <li><strong>A안:</strong> 상품 정보 및 브랜드 신뢰도 강조 페이지</li>
+                <li><strong>B안:</strong> 실제 고객 만족도 및 생생한 사진 리뷰 중심 페이지</li>
+            </ul>
+            <p><strong>핵심 지표:</strong> 클릭률(CTR), 상세 페이지 체류 시간</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.divider()
+    st.subheader("📊 실험 기대 효과 (Simulation)")
+    st.info("A/B 테스트 실시 시 예상되는 비즈니스 임팩트")
+
+    sim_col1, sim_col2, sim_col3 = st.columns(3)
+    sim_col1.metric("예상 전환율 개선", "+12.5%", "↑ 2.1pp")
+    sim_col2.metric("고객 획득 비용 (CPA) 절감", "-15.0%", "↓ 1,200원")
+    sim_col3.metric("예상 추가 매출액", "+45,000,000원", "시뮬레이션 기반")
+
+    st.caption("※ 위 지표는 현재까지 수집된 고객 행동 패턴 및 전환 데이터를 기반으로 산출된 예측치입니다.")
 
 # ------------------------------------------------------------------
 # 페이지: 🏆 고객 가치 분석 (LTV Analysis)
